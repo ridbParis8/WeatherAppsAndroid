@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">AndroMeteos</string>
     <string name="action_settings">Settings</string>
+    <string name="dimanche_28_octobre">Dimanche 28 Octobre</string>
+    <string name="temp_max_28_c">Temp max: 28°C</string>
+    <string name="temp_min_20_c">Temp min: 20°C</string>
+    <string name="paris_france">Paris, France</string>
+    <string name="todo">TODO</string>
 </resources>
