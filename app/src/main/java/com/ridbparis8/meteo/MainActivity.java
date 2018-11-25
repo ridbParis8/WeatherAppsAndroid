@@ -10,9 +10,12 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.util.Calendar;
@@ -21,7 +24,15 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import com.ridbparis8.meteo.Utilites;
+
 public class MainActivity extends AppCompatActivity {
+
+    TextView titre_tv_item;
+    TextView temp_max_tv_item;
+    TextView temp_min_tv_item;
+    TextView ville_tv_item;
+    ImageView image_iv_item;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,16 +51,47 @@ public class MainActivity extends AppCompatActivity {
             }
         });*/
 
+        titre_tv_item = (TextView)findViewById(R.id.titre_tv);
+        temp_max_tv_item = (TextView)findViewById(R.id.temp_max_tv);
+        temp_min_tv_item = (TextView)findViewById(R.id.temp_min_tv);
+        ville_tv_item = (TextView)findViewById(R.id.ville_tv);
+        image_iv_item = (ImageView)findViewById(R.id.icon_iv);
 
 
-
-        new TestRequest().execute();
+        new Request5Jours().execute();
+        //new TestRequest().execute();
     }
 
-    private class TestRequest extends AsyncTask<Void, Void, Void>{
+    private class Request5Jours extends AsyncTask<Void, Void, ClimatElement[]>{
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected ClimatElement[] doInBackground(Void... voids) {
+
+            String urlString = "https://api.openweathermap.org/data/2.5/forecast?q=Paris,us&appid=435442d234c7d367d5a62fbc7eb0b96d";
+
+            OkHttpClient client = new OkHttpClient();
+
+            Request request = new Request.Builder()
+                    .url(urlString)
+                    .build();
+
+            try {
+                Response response = client.newCall(request).execute();
+                String bodyReponse = response.body().string();
+                //climatElement = parseJSON(bodyReponse); // Contient maintenant les données et devient donc un objet de données météos
+                Log.i("Reponse", response.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return new ClimatElement[0];
+        }
+    }
+
+    private class TestRequest extends AsyncTask<Void, Void, ClimatElement>{
+
+        @Override
+        protected ClimatElement doInBackground(Void... voids) {
             Log.i("TestRequest", "Je ne suis pas synchro !");
 
             String urlTest = "http://api.openweathermap.org/data/2.5/weather?q=Paris&APPID=435442d234c7d367d5a62fbc7eb0b96d";
@@ -59,10 +101,12 @@ public class MainActivity extends AppCompatActivity {
                     .url(urlTest)
                     .build();
 
+            ClimatElement climatElement = null;
+
             try {
                 Response response = client.newCall(request).execute();
                 String bodyReponse = response.body().string();
-                parseJSON(bodyReponse);
+                climatElement = parseJSON(bodyReponse); // Contient maintenant les données et devient donc un objet de données météos
                 Log.i("Reponse", response.toString());
             } catch (IOException e) {
                 e.printStackTrace();
@@ -70,11 +114,26 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            return null;
+            return climatElement;
+        }
+
+        @Override
+        protected void onPostExecute(ClimatElement climatElement) {
+            super.onPostExecute(climatElement);
+
+            String titreItem = climatElement.getNomDuJour() + " " +
+                    climatElement.getJour() + " " +
+                    climatElement.getNomDuMois() + " " +
+                    climatElement.getAnnee();
+
+            titre_tv_item.setText(titreItem);
+            temp_max_tv_item.setText("Temp max: " + climatElement.getMaxTemp());
+            temp_min_tv_item.setText("Temp min: " + climatElement.getMinTemp());
+            ville_tv_item.setText(climatElement.getLocation());
         }
     }
 
-    private void parseJSON(String bodyReponse) throws JSONException {
+    private ClimatElement parseJSON(String bodyReponse) throws JSONException {
         // Permet de récuperer le lot d'informations
         JSONObject mainJSON = new JSONObject(bodyReponse);
 
@@ -85,9 +144,8 @@ public class MainActivity extends AppCompatActivity {
         JSONObject sys = mainJSON.getJSONObject("sys");
         String pays = sys.get("country").toString();
 
-        // localisation
+        // Localisation
         String location = ville + ", " + pays;
-        int salut = 1;
 
         // Permet de récuperer les températures
         JSONObject main = mainJSON.getJSONObject("main");
@@ -101,7 +159,27 @@ public class MainActivity extends AppCompatActivity {
         Calendar mydate = Calendar.getInstance();
         int timestamp = Integer.valueOf(dt);
         mydate.setTimeInMillis((long)timestamp*1000);
-        String resultat = mydate.get(Calendar.DAY_OF_MONTH)+"."+mydate.get(Calendar.MONTH)+"."+mydate.get(Calendar.YEAR);
+
+        // Formattage du mois & Formattage du jour
+        String nomDuMois = Utilites.getMois(mydate.get(Calendar.MONTH));
+        String nomDuJour = Utilites.getJour(mydate.get(Calendar.DAY_OF_WEEK));
+
+        // Classe des élements nécessaire pour une localisation du climent
+        ClimatElement climatElement = new ClimatElement(
+                ville,
+                pays,
+                location,
+                minTemp,
+                maxTemp,
+                timestamp,
+                nomDuMois,
+                nomDuJour,
+                mydate.get(Calendar.DAY_OF_MONTH),
+                mydate.get(Calendar.MONTH),
+                mydate.get(Calendar.YEAR)
+                );
+
+        return climatElement;
 
     }
 
