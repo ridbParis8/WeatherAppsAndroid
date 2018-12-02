@@ -1,10 +1,13 @@
 package com.ridbparis8.meteo;
 
+import android.content.ClipboardManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
@@ -12,27 +15,33 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.Calendar;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-import com.ridbparis8.meteo.Utilites;
+
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView titre_tv_item;
-    TextView temp_max_tv_item;
-    TextView temp_min_tv_item;
-    TextView ville_tv_item;
+    TextView jour_item;
+    TextView temperature_item;
     ImageView image_iv_item;
+
+    RecyclerView recyclerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,41 +60,178 @@ public class MainActivity extends AppCompatActivity {
             }
         });*/
 
-        titre_tv_item = (TextView)findViewById(R.id.titre_tv);
-        temp_max_tv_item = (TextView)findViewById(R.id.temp_max_tv);
-        temp_min_tv_item = (TextView)findViewById(R.id.temp_min_tv);
-        ville_tv_item = (TextView)findViewById(R.id.ville_tv);
+        jour_item = (TextView)findViewById(R.id.jour_tv);
+        temperature_item = (TextView)findViewById(R.id.temperature_tv);
         image_iv_item = (ImageView)findViewById(R.id.icon_iv);
+        recyclerView = (RecyclerView)findViewById(R.id.recyclerview);
 
 
         new Request5Jours().execute();
         //new TestRequest().execute();
     }
 
-    private class Request5Jours extends AsyncTask<Void, Void, ClimatElement[]>{
+    private class Request5Jours extends AsyncTask<Void, Void, Climat>{
 
         @Override
-        protected ClimatElement[] doInBackground(Void... voids) {
+        protected Climat doInBackground(Void... voids) {
 
-            String urlString = "https://api.openweathermap.org/data/2.5/forecast?q=Paris,us&appid=435442d234c7d367d5a62fbc7eb0b96d";
+            //String urlString = "https://api.openweathermap.org/data/2.5/forecast?q=Paris,us&appid=435442d234c7d367d5a62fbc7eb0b96d";
+
+            Climat climat = null;
+
+            final String QUERY_PARAM = "q";
+            final String APPID_PARAM = "appid";
+            final String UNITS_PARAM = "units";
+
+            // Permet de recréer l'url en la sécurisant
+            Uri.Builder uriBuilder = new Uri.Builder();
+            uriBuilder.scheme("https")
+                    .authority("api.openweathermap.org")
+                    .appendPath("data")
+                    .appendPath("2.5")
+                    .appendPath("forecast")
+                    .appendQueryParameter(QUERY_PARAM,"Paris")
+                    .appendQueryParameter(UNITS_PARAM,"metric") // Passage en Celcius
+                    .appendQueryParameter(APPID_PARAM, "435442d234c7d367d5a62fbc7eb0b96d") // Clé API
+                    .build();
+
+            URL url = null;
+
+            // Test de réussite de la recréation de l'URL
+            try{
+                url = new URL(uriBuilder.toString());
+                int h1 = 1;
+            }catch (MalformedURLException e){
+                e.printStackTrace();
+            }
 
             OkHttpClient client = new OkHttpClient();
 
             Request request = new Request.Builder()
-                    .url(urlString)
+                    .url(url)
                     .build();
 
             try {
                 Response response = client.newCall(request).execute();
                 String bodyReponse = response.body().string();
+                Location location = parseLocation(bodyReponse);
+                climat = parseMain(bodyReponse);
+                climat.setLocation(location);
+
                 //climatElement = parseJSON(bodyReponse); // Contient maintenant les données et devient donc un objet de données météos
                 Log.i("Reponse", response.toString());
             } catch (IOException e) {
                 e.printStackTrace();
+            } catch (JSONException e){
+                e.printStackTrace();;
             }
 
-            return new ClimatElement[0];
+            return climat; // SI retourne null c'est qu'on a pas pu faire notre request
         }
+
+        @Override
+        protected void onPostExecute(Climat climat) { // Fil principl du user
+            super.onPostExecute(climat);
+            Toast.makeText(MainActivity.this, climat.toString(), Toast.LENGTH_SHORT).show();
+
+            String nomDeJours = climat.tempsArray.get(0).nomDeJours;
+            int temperature = (int)climat.climatInfoArray.get(0).temperature;
+
+            jour_item.setText(nomDeJours);
+            temperature_item.setText(temperature + "°C");
+        }
+    }
+
+    private Climat parseMain(String bodyReponse) throws JSONException {
+        JSONObject mainJSON = new JSONObject(bodyReponse);
+        JSONArray list = mainJSON.getJSONArray("list");
+
+        ArrayList<Temps> tempsArray = new ArrayList<Temps>();
+        ArrayList<ClimatInfo> climatInfoArray = new ArrayList<ClimatInfo>();
+
+        // Récupération des informations de la liste entière (40 éléments)
+        // Ces opérations permettent donc de récupérer uniquement quelques unes d'entre elles
+        int i = 0;
+        for(i=0; i < list.length(); i++){
+
+            JSONObject elementi = list.getJSONObject(i);
+            Temps tempsi = parseTemps(elementi);
+
+            // Si element 0 > 15 je prends
+            if(i == 0){
+                if(Integer.valueOf(tempsi.dt_text.substring(11, 13)) > 15){
+                    tempsArray.add(tempsi);
+                    climatInfoArray.add(parseClimatInfo(elementi));
+                }
+            }
+
+
+            // Si temps == 15h on prend
+            if(tempsi.dt_text.substring(11, 13).equals("15")){
+                tempsArray.add(tempsi);
+                climatInfoArray.add(parseClimatInfo(elementi));
+            }
+
+        }
+
+        Climat climat = new Climat(tempsArray, climatInfoArray);
+        return climat;
+
+    }
+
+    private Temps parseTemps(JSONObject element0) throws JSONException{
+        //Temps
+        int dt = element0.getInt("dt");
+        String dt_text = element0.getString("dt_txt");
+        Temps temps0 = new Temps(dt, dt_text);
+
+        return temps0;
+    }
+
+    private ClimatInfo parseClimatInfo(JSONObject element0) throws JSONException{
+        ////JSON -> main
+        JSONObject main = element0.getJSONObject("main");
+        float temperature = (float) main.getDouble("temp");
+        float pression = (float) main.getDouble("pressure");
+        float humidite = (float) main.getDouble("humidity");
+
+        ////JSON -> weather
+        JSONArray weather = element0.getJSONArray("weather");
+        JSONObject weather0 = weather.getJSONObject(0);
+        int weatherId = weather0.getInt("id");
+        String weatherMain = weather0.getString("main");
+        String weatherDescription = weather0.getString("description");
+        String weatherIcon = weather0.getString("icon");
+
+        //// JSON -> wind
+        JSONObject vent = element0.getJSONObject("wind");
+        float vent_vitesse = (float) vent.getDouble("speed");
+
+        ClimatInfo climatInfo = new ClimatInfo(
+                temperature,
+                pression,
+                humidite,
+                vent_vitesse,
+                weatherMain,
+                weatherDescription,
+                weatherIcon,
+                weatherId);
+
+        return climatInfo;
+    }
+
+    private Location parseLocation(String bodyReponse) throws JSONException {
+        JSONObject mainJSON = new JSONObject(bodyReponse);
+        JSONObject city = mainJSON.getJSONObject("city");
+        int id = city.getInt("id");
+        String ville = city.getString("name");
+        String pays = city.getString("country");
+        JSONObject coord = city.getJSONObject("coord");
+        float lat = (float)coord.getDouble("lat");
+        float lon = (float)coord.getDouble("lon");
+
+        Location location = new Location(id, lat, lon, ville,pays);
+        return location;
     }
 
     private class TestRequest extends AsyncTask<Void, Void, ClimatElement>{
@@ -126,10 +272,10 @@ public class MainActivity extends AppCompatActivity {
                     climatElement.getNomDuMois() + " " +
                     climatElement.getAnnee();
 
-            titre_tv_item.setText(titreItem);
-            temp_max_tv_item.setText("Temp max: " + climatElement.getMaxTemp());
-            temp_min_tv_item.setText("Temp min: " + climatElement.getMinTemp());
-            ville_tv_item.setText(climatElement.getLocation());
+            //titre_tv_item.setText(titreItem);
+            //temp_max_tv_item.setText("Temp max: " + climatElement.getMaxTemp());
+            //temp_min_tv_item.setText("Temp min: " + climatElement.getMinTemp());
+            //ville_tv_item.setText(climatElement.getLocation());
         }
     }
 
@@ -156,8 +302,8 @@ public class MainActivity extends AppCompatActivity {
         String dt = mainJSON.get("dt").toString();
 
         // Conversion en affichage de date normal --> Code StackOverflow
-        Calendar mydate = Calendar.getInstance();
         int timestamp = Integer.valueOf(dt);
+        Calendar mydate = Calendar.getInstance();
         mydate.setTimeInMillis((long)timestamp*1000);
 
         // Formattage du mois & Formattage du jour
