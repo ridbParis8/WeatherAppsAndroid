@@ -1,6 +1,8 @@
 package com.ridbparis8.meteo;
 
-public class ClimatInfo {
+import java.io.Serializable;
+
+public class ClimatInfo implements Serializable {
 
     int climat_id;
     float vent_vitesse;

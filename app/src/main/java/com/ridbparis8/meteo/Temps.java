@@ -1,8 +1,9 @@
 package com.ridbparis8.meteo;
 
+import java.io.Serializable;
 import java.util.Calendar;
 
-public class Temps {
+public class Temps implements Serializable {
 
     int    dt_unix;
     int    an;

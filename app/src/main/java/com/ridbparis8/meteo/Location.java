@@ -1,6 +1,8 @@
 package com.ridbparis8.meteo;
 
-public class Location {
+import java.io.Serializable;
+
+public class Location implements Serializable { // Pour dire que la date peut etre passé à d'autre activité (pour passer de ClimatAdapteut a DetailActivity avec la méthode putExtra {
 
     int    id;
     float  lat;

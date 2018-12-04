@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -37,11 +39,9 @@ import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView jour_item;
-    TextView temperature_item;
-    ImageView image_iv_item;
-
     RecyclerView recyclerView;
+
+    ClimatAdapteur climatAdapteur;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,9 +60,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });*/
 
-        jour_item = (TextView)findViewById(R.id.jour_tv);
-        temperature_item = (TextView)findViewById(R.id.temperature_tv);
-        image_iv_item = (ImageView)findViewById(R.id.icon_iv);
         recyclerView = (RecyclerView)findViewById(R.id.recyclerview);
 
 
@@ -132,13 +129,16 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Climat climat) { // Fil principl du user
             super.onPostExecute(climat);
-            Toast.makeText(MainActivity.this, climat.toString(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Bienvenu dans Met8os", Toast.LENGTH_SHORT).show();
 
             String nomDeJours = climat.tempsArray.get(0).nomDeJours;
             int temperature = (int)climat.climatInfoArray.get(0).temperature;
 
-            jour_item.setText(nomDeJours);
-            temperature_item.setText(temperature + "°C");
+            climatAdapteur = new ClimatAdapteur(climat);
+            RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
+            recyclerView.setLayoutManager(mLayoutManager);
+            recyclerView.setItemAnimator(new DefaultItemAnimator());
+            recyclerView.setAdapter(climatAdapteur);
         }
     }
 
