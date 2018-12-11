@@ -52,7 +52,7 @@ public class ClimatAdapteur extends RecyclerView.Adapter<ClimatAdapteur.ViewHold
         viewHolder.image.setImageDrawable(iconDrawable);
     }
 
-    // Définit combien de fois on doit executer la positon
+    // Définit combien de fois on doit executer la position
     // SI 5 elements alors 5 view a construire
     @Override
     public int getItemCount() {

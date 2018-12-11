@@ -150,16 +150,16 @@ public class MainActivity extends AppCompatActivity {
         ArrayList<ClimatInfo> climatInfoArray = new ArrayList<ClimatInfo>();
 
         // Récupération des informations de la liste entière (40 éléments)
-        // Ces opérations permettent donc de récupérer uniquement quelques unes d'entre elles
+        // Ces opérations permettent donc de récupérer uniquement quelques unes d'entre elles (car Maj toutes les 3h)
         int i = 0;
         for(i=0; i < list.length(); i++){
 
             JSONObject elementi = list.getJSONObject(i);
             Temps tempsi = parseTemps(elementi);
 
-            // Si element 0 > 15 je prends
+            // Extrait l'element Si element 0 > 15 je prends
             if(i == 0){
-                if(Integer.valueOf(tempsi.dt_text.substring(11, 13)) > 15){
+                if(Integer.valueOf(tempsi.dt_text.substring(11, 13)) > 15){ //dt_text = date jj - mm - aa hh      ne prends que les caractere 11 à 13    // Conertie en entier pour la comparaison
                     tempsArray.add(tempsi);
                     climatInfoArray.add(parseClimatInfo(elementi));
                 }
@@ -234,6 +234,7 @@ public class MainActivity extends AppCompatActivity {
         return location;
     }
 
+    /*
     private class TestRequest extends AsyncTask<Void, Void, ClimatElement>{
 
         @Override
@@ -327,7 +328,7 @@ public class MainActivity extends AppCompatActivity {
 
         return climatElement;
 
-    }
+    } */
 
     /*@Override
     public boolean onCreateOptionsMenu(Menu menu) {
